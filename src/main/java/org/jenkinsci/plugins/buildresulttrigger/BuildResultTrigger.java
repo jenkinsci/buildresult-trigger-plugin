@@ -35,7 +35,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
     /*
     * Recorded map to know if a build have to be triggered
     */
-    private transient Map<String, Result> results = new HashMap<String, Result>();
+    private transient Map<String, Integer> results = new HashMap<String, Integer>();
 
     @DataBoundConstructor
     public BuildResultTrigger(String cronTabSpec, BuildResultTriggerInfo[] jobInfo) throws ANTLRException {
@@ -80,10 +80,10 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                 boolean changed = checkIfModified(log);
                 log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
                 if (changed) {
-                    log.info("Checked jobs match polling criteria. Scheduling a build.");
+                    log.info("Changes detected. Scheduling a build.");
                     project.scheduleBuild(new BuildResultTriggerCause());
                 } else {
-                    log.info("Checked jobs don't match polling criteria.");
+                    log.info("No changes.");
                 }
             } catch (BuildResultTriggerException e) {
                 log.error("Polling error " + e.getMessage());
@@ -97,14 +97,15 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
     public void start(BuildableItem project, boolean newInstance) {
         super.start(project, newInstance);
         try {
-            resetMapResults();
+            results = new HashMap<String, Integer>();
+            updateMapResults();
         } catch (IOException ioe) {
             LOGGER.log(Level.SEVERE, "Error on trigger startup " + ioe.getMessage());
             ioe.printStackTrace();
         }
     }
 
-    private void resetMapResults() throws IOException {
+    private void updateMapResults() throws IOException {
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
             TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
@@ -112,7 +113,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                 Project job = (Project) topLevelItem;
                 Run lastBuild = job.getLastBuild();
                 if (lastBuild != null) {
-                    results.put(jobName, lastBuild.getResult());
+                    results.put(jobName, lastBuild.getNumber());
                 }
             }
         }
@@ -133,34 +134,37 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
 
                 //Get new job result
                 Result newResult;
+                int newBuildNumber = 0;
                 if (lastBuild == null) {
                     newResult = Result.NOT_BUILT;
 
                 } else {
                     newResult = lastBuild.getResult();
+                    newBuildNumber = lastBuild.getNumber();
                 }
 
+
                 //Get registered job result if exists
-                Result registeredResult = results.get(jobName);
-                if (registeredResult == null) {
+                Integer lastBuildNumber = results.get(jobName);
+                if (lastBuildNumber == null || lastBuildNumber == 0) {
                     log.info(String.format("The job '%s' didn't exist in the previous polling. Checking a build result change in the next polling.", jobName));
-                    resetMapResults();
+                    updateMapResults();
                     return false;
                 }
 
-                //Check expected result only if the build job has changed
-                if (newResult.ordinal != registeredResult.ordinal) {
-                    log.info(String.format("Last build result for the job '%s' has changed. Checking expected job build results.", jobName));
+                //Process if there is a new build between now and previous polling
+                if (newBuildNumber == 0 || newBuildNumber !=  lastBuildNumber) {
+                    log.info(String.format("There is at least one new build for the job '%s'. Checking expected job build results.", jobName));
                     CheckedResult[] expectedResults = info.getCheckedResults();
                     for (CheckedResult checkedResult : expectedResults) {
                         if (checkedResult.getResult().ordinal == newResult.ordinal) {
                             log.info(String.format("Last build result for the job '%s'  matches the expected result '%s'.", jobName, newResult));
-                            resetMapResults();
+                            updateMapResults();
                             return true;
                         }
                     }
                 } else {
-                    log.info(String.format("The last build result for the job '%s' hasn't changed.", jobName));
+                    log.info(String.format("There is no new build for the job '%s'.", jobName));
                 }
             }
         }
