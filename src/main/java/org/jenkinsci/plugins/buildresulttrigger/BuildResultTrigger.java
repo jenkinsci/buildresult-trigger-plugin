@@ -153,7 +153,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                 }
 
                 //Process if there is a new build between now and previous polling
-                if (newBuildNumber == 0 || newBuildNumber !=  lastBuildNumber) {
+                if (newBuildNumber == 0 || newBuildNumber != lastBuildNumber) {
                     log.info(String.format("There is at least one new build for the job '%s'. Checking expected job build results.", jobName));
                     CheckedResult[] expectedResults = info.getCheckedResults();
                     for (CheckedResult checkedResult : expectedResults) {
