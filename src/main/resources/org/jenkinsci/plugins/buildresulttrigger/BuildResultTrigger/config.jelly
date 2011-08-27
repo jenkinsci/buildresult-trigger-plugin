@@ -3,7 +3,7 @@
 
     <f:entry>
 
-        <f:repeatable var="jobInfo" items="${instance.jobsInfo}">
+        <f:repeatable var="jobInfo" items="${instance.jobsInfo}" add="${%Add a job to monitor}">
 
             <table width="100%">
 
@@ -16,8 +16,8 @@
                 </f:entry>
 
                 <f:block>
-                    <f:entry field="jobResults" title="${%Checked Job Results}">
-                        <f:repeatable var="checkedResult" items="${jobInfo.checkedResults}">
+                    <f:entry field="jobResults" title="${%Job Build Results to check}">
+                        <f:repeatable var="checkedResult" items="${jobInfo.checkedResults}" add="${%Add a build result}">
 
                             <table width="100%">
 
