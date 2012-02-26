@@ -2,40 +2,28 @@ package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
 import hudson.Extension;
-import hudson.Util;
 import hudson.model.*;
-import hudson.triggers.Trigger;
-import hudson.triggers.TriggerDescriptor;
 import hudson.util.SequentialExecutionQueue;
-import hudson.util.StreamTaskListener;
+import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
+import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
+import org.jenkinsci.lib.xtrigger.XTriggerException;
+import org.jenkinsci.lib.xtrigger.XTriggerLog;
 import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.text.DateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * @author Gregory Boissinot
  */
-public class BuildResultTrigger extends Trigger<BuildableItem> implements Serializable {
-
-    private static Logger LOGGER = Logger.getLogger(BuildResultTrigger.class.getName());
+public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResultTriggerContext> {
 
     private BuildResultTriggerInfo[] jobsInfo = new BuildResultTriggerInfo[0];
-
-    /*
-    * Recorded map to know if a build have to be triggered
-    */
-    private transient Map<String, Integer> results = new HashMap<String, Integer>();
 
     @DataBoundConstructor
     public BuildResultTrigger(String cronTabSpec, BuildResultTriggerInfo[] jobInfo) throws ANTLRException {
@@ -58,54 +46,29 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
         return Collections.singleton(action);
     }
 
-    /**
-     * Asynchronous task
-     */
-    protected class Runner implements Runnable, Serializable {
-
-        private AbstractProject project;
-
-        private BuildResultTriggerLog log;
-
-        private Runner(AbstractProject project, BuildResultTriggerLog log) {
-            this.project = project;
-            this.log = log;
-        }
-
-        public void run() {
-
-            try {
-                long start = System.currentTimeMillis();
-                log.info("Polling started on " + DateFormat.getDateTimeInstance().format(new Date(start)));
-                boolean changed = checkIfModified(log);
-                log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
-                if (changed) {
-                    log.info("Changes detected. Scheduling a build.");
-                    project.scheduleBuild(new BuildResultTriggerCause());
-                } else {
-                    log.info("No changes.");
-                }
-            } catch (BuildResultTriggerException e) {
-                log.error("Polling error " + e.getMessage());
-            } catch (Throwable e) {
-                log.error("SEVERE - Polling error " + e.getMessage());
-            }
-        }
+    @Override
+    protected boolean requiresWorkspaceForPolling() {
+        return false;
     }
 
     @Override
-    public void start(BuildableItem project, boolean newInstance) {
-        super.start(project, newInstance);
-        try {
-            results = new HashMap<String, Integer>();
-            updateMapResults();
-        } catch (IOException ioe) {
-            LOGGER.log(Level.SEVERE, "Error on trigger startup " + ioe.getMessage());
-            ioe.printStackTrace();
-        }
+    protected String getName() {
+        return "BuildResultTrigger";
     }
 
-    private void updateMapResults() throws IOException {
+    @Override
+    protected Action[] getScheduledActions(Node node, XTriggerLog log) {
+        return new Action[0];
+    }
+
+    @Override
+    protected String getCause() {
+        return "A change to build result";
+    }
+
+    @Override
+    protected BuildResultTriggerContext getContext(Node node, XTriggerLog log) throws XTriggerException {
+        Map<String, Integer> contextResults = new HashMap<String, Integer>();
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
             TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
@@ -113,13 +76,17 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                 Project job = (Project) topLevelItem;
                 Run lastBuild = job.getLastBuild();
                 if (lastBuild != null) {
-                    results.put(jobName, lastBuild.getNumber());
+                    contextResults.put(jobName, lastBuild.getNumber());
                 }
             }
         }
+        return new BuildResultTriggerContext(contextResults);
     }
 
-    private boolean checkIfModified(final BuildResultTriggerLog log) throws BuildResultTriggerException, IOException {
+    @Override
+    protected boolean checkIfModified(BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext1, XTriggerLog log) throws XTriggerException {
+
+        Map<String, Integer> oldContextResults = oldContext.getResults();
 
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
@@ -137,7 +104,6 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                 int newBuildNumber = 0;
                 if (lastBuild == null) {
                     newResult = Result.NOT_BUILT;
-
                 } else {
                     newResult = lastBuild.getResult();
                     newBuildNumber = lastBuild.getNumber();
@@ -145,10 +111,9 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
 
 
                 //Get registered job result if exists
-                Integer lastBuildNumber = results.get(jobName);
+                Integer lastBuildNumber = oldContextResults.get(jobName);
                 if (lastBuildNumber == null || lastBuildNumber == 0) {
                     log.info(String.format("The job '%s' didn't exist in the previous polling. Checking a build result change in the next polling.", jobName));
-                    updateMapResults();
                     return false;
                 }
 
@@ -159,7 +124,6 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
                     for (CheckedResult checkedResult : expectedResults) {
                         if (checkedResult.getResult().ordinal == newResult.ordinal) {
                             log.info(String.format("Last build result for the job '%s'  matches the expected result '%s'.", jobName, newResult));
-                            updateMapResults();
                             return true;
                         }
                     }
@@ -172,38 +136,9 @@ public class BuildResultTrigger extends Trigger<BuildableItem> implements Serial
         return false;
     }
 
-    @Override
-    public void run() {
-
-        if (!Hudson.getInstance().isQuietingDown() && ((AbstractProject) this.job).isBuildable()) {
-            BuildResultTriggerDescriptor descriptor = getDescriptor();
-            ExecutorService executorService = descriptor.getExecutor();
-            StreamTaskListener listener;
-            try {
-                listener = new StreamTaskListener(getLogFile());
-                BuildResultTriggerLog log = new BuildResultTriggerLog(listener);
-                if (job instanceof AbstractProject) {
-                    Runner runner = new Runner((AbstractProject) job, log);
-                    executorService.execute(runner);
-                }
-
-            } catch (Throwable t) {
-                executorService.shutdown();
-                LOGGER.log(Level.SEVERE, "Severe Error during the trigger execution " + t.getMessage());
-                t.printStackTrace();
-            }
-        }
-    }
-
-
-    @Override
-    public BuildResultTriggerDescriptor getDescriptor() {
-        return (BuildResultTriggerDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
-    }
-
     @Extension
     @SuppressWarnings("unused")
-    public static class BuildResultTriggerDescriptor extends TriggerDescriptor {
+    public static class BuildResultTriggerDescriptor extends XTriggerDescriptor {
 
         private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor());
 

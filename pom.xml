@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.409</version>
+        <version>1.410</version>
     </parent>
 
     <artifactId>buildresult-trigger</artifactId>
@@ -32,12 +32,21 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
+        <xtrigger.lib.version>0.8</xtrigger.lib.version>
     </properties>
 
     <scm>
         <connection>scm:git:git://github.com/jenkinsci/buildresult-trigger-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/buildresult-trigger-plugin.git</developerConnection>
     </scm>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jenkins-ci.lib</groupId>
+            <artifactId>xtrigger-lib</artifactId>
+            <version>${xtrigger.lib.version}</version>
+        </dependency>
+    </dependencies>
 
 </project>
 

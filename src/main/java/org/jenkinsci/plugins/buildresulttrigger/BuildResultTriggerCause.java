@@ -1,14 +1,14 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
-import hudson.model.Cause;
+import org.jenkinsci.lib.xtrigger.XTriggerCause;
 
 /**
  * @author Gregory Boissinot
  */
-public class BuildResultTriggerCause extends Cause {
+@Deprecated
+public class BuildResultTriggerCause extends XTriggerCause {
 
-    @Override
-    public String getShortDescription() {
-        return "Build Result Trigger";
+    public BuildResultTriggerCause(String causeFrom) {
+        super("IvyTrigger", causeFrom, false);
     }
 }
