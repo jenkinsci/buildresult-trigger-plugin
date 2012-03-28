@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
 import hudson.Extension;
+import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
 import hudson.util.SequentialExecutionQueue;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
@@ -72,8 +73,8 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
             TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
-            if (topLevelItem != null && topLevelItem instanceof Project) {
-                Project job = (Project) topLevelItem;
+            if (isValidBuildResultProject(topLevelItem)) {
+                AbstractProject job = (AbstractProject) topLevelItem;
                 Run lastBuild = job.getLastBuild();
                 if (lastBuild != null) {
                     contextResults.put(jobName, lastBuild.getNumber());
@@ -81,6 +82,22 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             }
         }
         return new BuildResultTriggerContext(contextResults);
+    }
+
+    private boolean isValidBuildResultProject(TopLevelItem item) {
+        if (item == null) {
+            return false;
+        }
+
+        if (!(item instanceof AbstractProject)) {
+            return false;
+        }
+
+        if (item instanceof MatrixConfiguration) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override
@@ -91,10 +108,10 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
             TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
-            if (topLevelItem != null && topLevelItem instanceof Project) {
+            if (isValidBuildResultProject(topLevelItem)) {
 
-                Project job = (Project) topLevelItem;
-                log.info(String.format("Checking changes for '%s' job.", jobName));
+                AbstractProject job = (AbstractProject) topLevelItem;
+                log.info(String.format("Checking changes for job %s.", jobName));
 
                 //Get last build
                 Run lastBuild = job.getLastBuild();
@@ -113,23 +130,36 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                 //Get registered job result if exists
                 Integer lastBuildNumber = oldContextResults.get(jobName);
                 if (lastBuildNumber == null || lastBuildNumber == 0) {
-                    log.info(String.format("The job '%s' didn't exist in the previous polling. Checking a build result change in the next polling.", jobName));
+                    log.info(String.format("The job %s didn't exist in the previous poll. Checking a build result change in the next poll.", jobName));
                     return false;
                 }
 
                 //Process if there is a new build between now and previous polling
                 if (newBuildNumber == 0 || newBuildNumber != lastBuildNumber) {
-                    log.info(String.format("There is at least one new build for the job '%s'. Checking expected job build results.", jobName));
+
+                    log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
                     CheckedResult[] expectedResults = info.getCheckedResults();
+
+                    if (expectedResults == null || expectedResults.length == 0) {
+                        log.info("No results to check. You have to specify at least one expected build result in the build-result trigger configuration.");
+                        return false;
+                    }
+
                     for (CheckedResult checkedResult : expectedResults) {
+                        log.info(String.format("Checking %s", checkedResult.getResult().toString()));
                         if (checkedResult.getResult().ordinal == newResult.ordinal) {
-                            log.info(String.format("Last build result for the job '%s'  matches the expected result '%s'.", jobName, newResult));
+                            log.info(String.format("Last build result for the job %s matches the expected result %s.", jobName, newResult));
                             return true;
                         }
                     }
-                } else {
-                    log.info(String.format("There is no new build for the job '%s'.", jobName));
+
+                    return false;
+
                 }
+
+                log.info(String.format("There is no new build for the job %s.", jobName));
+                return false;
+
             }
         }
 
@@ -162,7 +192,9 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         public List<Job> getJobList() {
             List<Job> jobs = new ArrayList<Job>();
             for (Item item : Hudson.getInstance().getAllItems()) {
-                jobs.addAll(item.getAllJobs());
+                if (!(item instanceof MatrixConfiguration)) {
+                    jobs.add((Job) (item));
+                }
             }
             return jobs;
         }
