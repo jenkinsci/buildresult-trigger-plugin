@@ -104,10 +104,10 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     protected boolean checkIfModified(BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext1, XTriggerLog log) throws XTriggerException {
 
         Map<String, Integer> oldContextResults = oldContext.getResults();
-
+        Map<String, TopLevelItem> items = getItemMap();
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
-            TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
+            TopLevelItem topLevelItem = getJobByName(jobName, items);
             if (isValidBuildResultProject(topLevelItem)) {
 
                 AbstractProject job = (AbstractProject) topLevelItem;
@@ -164,6 +164,22 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         return false;
+    }
+
+    private Map<String, TopLevelItem> getItemMap() {
+        try {
+            Field itemsField = Hudson.class.getDeclaredField("items");
+            itemsField.setAccessible(true);
+            return (Map<String, TopLevelItem>) itemsField.get(Hudson.getInstance());
+        } catch (NoSuchFieldException e) {
+            return null;
+        } catch (IllegalAccessException e) {
+            return null;
+        }
+    }
+
+    private TopLevelItem getJobByName(String jobName, Map<String, TopLevelItem> itemMap) {
+        return itemMap.get(jobName);
     }
 
     @Extension
