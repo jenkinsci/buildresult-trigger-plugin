@@ -208,7 +208,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         public List<Job> getJobList() {
             List<Job> jobs = new ArrayList<Job>();
             for (Item item : Hudson.getInstance().getAllItems()) {
-                if (!(item instanceof MatrixConfiguration)) {
+                if ((item instanceof Job) && !(item instanceof MatrixConfiguration)) {
                     jobs.add((Job) (item));
                 }
             }
