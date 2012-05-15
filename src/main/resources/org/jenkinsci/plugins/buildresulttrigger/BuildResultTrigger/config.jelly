@@ -7,12 +7,8 @@
 
             <table width="100%">
 
-                <f:entry  field="monitoredJob" title="${%Job to monitor}">
-                    <select class="setting-input" name="jobInfo.jobName">
-                        <j:forEach var="job" items="${descriptor.jobList}">
-                            <f:option selected="${job.name==jobInfo.jobName}">${job.name}</f:option>
-                        </j:forEach>
-                    </select>
+                <f:entry  field="jobName" title="${%Job to monitor}">
+                    <f:select/>
                 </f:entry>
 
                 <f:block>
