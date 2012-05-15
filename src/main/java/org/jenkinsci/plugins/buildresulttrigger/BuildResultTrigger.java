@@ -4,6 +4,7 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
+import hudson.util.ListBoxModel;
 import hudson.util.SequentialExecutionQueue;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
@@ -205,14 +206,14 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             }
         }
 
-        public List<Job> getJobList() {
-            List<Job> jobs = new ArrayList<Job>();
+        public ListBoxModel doFillJobNameItems() {
+            ListBoxModel model = new ListBoxModel();
             for (Item item : Hudson.getInstance().getAllItems()) {
                 if ((item instanceof Job) && !(item instanceof MatrixConfiguration)) {
-                    jobs.add((Job) (item));
+                    model.add(item.getFullName());
                 }
             }
-            return jobs;
+            return model;
         }
 
         @Override
