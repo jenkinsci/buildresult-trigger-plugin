@@ -4,6 +4,7 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
+import hudson.util.ListBoxModel;
 import hudson.util.SequentialExecutionQueue;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
@@ -72,9 +73,8 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         Map<String, Integer> contextResults = new HashMap<String, Integer>();
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
-            TopLevelItem topLevelItem = Hudson.getInstance().getItem(jobName);
-            if (isValidBuildResultProject(topLevelItem)) {
-                AbstractProject job = (AbstractProject) topLevelItem;
+            AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
+            if (isValidBuildResultProject(job)) {
                 Run lastBuild = job.getLastBuild();
                 if (lastBuild != null) {
                     contextResults.put(jobName, lastBuild.getNumber());
@@ -84,12 +84,8 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return new BuildResultTriggerContext(contextResults);
     }
 
-    private boolean isValidBuildResultProject(TopLevelItem item) {
+    private boolean isValidBuildResultProject(AbstractProject item) {
         if (item == null) {
-            return false;
-        }
-
-        if (!(item instanceof AbstractProject)) {
             return false;
         }
 
@@ -104,13 +100,11 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     protected boolean checkIfModified(BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext1, XTriggerLog log) throws XTriggerException {
 
         Map<String, Integer> oldContextResults = oldContext.getResults();
-        Map<String, TopLevelItem> items = getItemMap();
         for (BuildResultTriggerInfo info : jobsInfo) {
             String jobName = info.getJobName();
-            TopLevelItem topLevelItem = getJobByName(jobName, items);
-            if (isValidBuildResultProject(topLevelItem)) {
+            AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
+            if (isValidBuildResultProject(job)) {
 
-                AbstractProject job = (AbstractProject) topLevelItem;
                 log.info(String.format("Checking changes for job %s.", jobName));
 
                 //Get last build
@@ -166,22 +160,6 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return false;
     }
 
-    private Map<String, TopLevelItem> getItemMap() {
-        try {
-            Field itemsField = Hudson.class.getDeclaredField("items");
-            itemsField.setAccessible(true);
-            return (Map<String, TopLevelItem>) itemsField.get(Hudson.getInstance());
-        } catch (NoSuchFieldException e) {
-            return null;
-        } catch (IllegalAccessException e) {
-            return null;
-        }
-    }
-
-    private TopLevelItem getJobByName(String jobName, Map<String, TopLevelItem> itemMap) {
-        return itemMap.get(jobName);
-    }
-
     @Extension
     @SuppressWarnings("unused")
     public static class BuildResultTriggerDescriptor extends XTriggerDescriptor {
@@ -205,14 +183,14 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             }
         }
 
-        public List<Job> getJobList() {
-            List<Job> jobs = new ArrayList<Job>();
+        public ListBoxModel doFillJobNameItems() {
+            ListBoxModel model = new ListBoxModel();
             for (Item item : Hudson.getInstance().getAllItems()) {
-                if (!(item instanceof MatrixConfiguration)) {
-                    jobs.add((Job) (item));
+                if ((item instanceof Job) && !(item instanceof MatrixConfiguration)) {
+                    model.add(item.getFullName());
                 }
             }
-            return jobs;
+            return model;
         }
 
         @Override
