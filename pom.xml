@@ -45,6 +45,7 @@
             <groupId>org.jenkins-ci.lib</groupId>
             <artifactId>xtrigger-lib</artifactId>
             <version>${xtrigger.lib.version}</version>
+            <!-- only required for backward compatibility -->
         </dependency>
     </dependencies>
 
