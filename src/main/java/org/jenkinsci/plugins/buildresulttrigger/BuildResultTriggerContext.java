@@ -7,6 +7,7 @@ import java.util.Map;
 
 /**
  * @author Gregory Boissinot
+ * @deprecated
  */
 public class BuildResultTriggerContext implements XTriggerContext {
 

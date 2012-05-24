@@ -12,6 +12,7 @@ import java.nio.charset.Charset;
 
 /**
  * @author Gregory Boissinot
+ * @deprecated
  */
 public class BuildResultTriggerAction implements Action {
 
