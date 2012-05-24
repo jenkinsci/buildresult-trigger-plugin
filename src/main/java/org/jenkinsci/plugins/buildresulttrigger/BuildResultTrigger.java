@@ -32,7 +32,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> {
     @Override
     public void start(BuildableItem project, boolean newInstance) {
         super.start(project, newInstance);
-        instances.put(this, "foo");
+        instances.add(this);
     }
 
     @Override
@@ -50,7 +50,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> {
     public final static RunListener<Build<?,?>> listener = new RunListener<Build<?,?>>() {
         @Override
         public void onFinalized(Build<?, ?> build) {
-            for (BuildResultTrigger trigger : instances.keySet()) {
+            for (BuildResultTrigger trigger : instances) {
                 trigger.onFinalized(build);
             }
         }
@@ -75,7 +75,7 @@ public class BuildResultTrigger extends Trigger<BuildableItem> {
         }
     }
 
-    private static final Map<BuildResultTrigger, String> instances = new ConcurrentHashMap<BuildResultTrigger, String>();
+    private static final List<BuildResultTrigger> instances = new CopyOnWriteArrayList<BuildResultTrigger>();
 
     @Extension
     @SuppressWarnings("unused")
