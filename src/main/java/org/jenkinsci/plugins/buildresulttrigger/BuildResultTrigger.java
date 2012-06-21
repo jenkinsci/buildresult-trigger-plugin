@@ -5,7 +5,6 @@ import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
 import hudson.security.ACL;
-import hudson.security.NotSerilizableSecurityContext;
 import hudson.util.ListBoxModel;
 import hudson.util.SequentialExecutionQueue;
 import org.acegisecurity.context.SecurityContext;
@@ -87,8 +86,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                     }
                 }
             }
-        }
-        finally {
+        } finally {
             SecurityContextHolder.setContext(securityContext);
         }
         return new BuildResultTriggerContext(contextResults);
@@ -168,8 +166,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
                 }
             }
-        }
-        finally {
+        } finally {
             SecurityContextHolder.setContext(securityContext);
         }
 
