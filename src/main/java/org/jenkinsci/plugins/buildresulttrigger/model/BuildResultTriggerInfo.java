@@ -34,9 +34,8 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     @Extension
     public static class DescriptorImpl extends Descriptor<BuildResultTriggerInfo> {
         public String getDisplayName() {
-            return "Job to monitor"; 
+            return "Job to monitor";
         }
-
 
         public ListBoxModel doFillJobNameItems() {
             ListBoxModel model = new ListBoxModel();

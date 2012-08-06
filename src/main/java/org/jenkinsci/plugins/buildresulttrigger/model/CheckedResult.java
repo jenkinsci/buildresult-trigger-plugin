@@ -1,7 +1,9 @@
 package org.jenkinsci.plugins.buildresulttrigger.model;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.AbstractDescribableImpl;
+import hudson.model.Descriptor;
+import hudson.model.Result;
 import hudson.util.ListBoxModel;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -11,7 +13,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
 
     private transient Result result;
-  
+
     private final String checked;
 
     @DataBoundConstructor
@@ -25,7 +27,7 @@ public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
             this.result = Result.fromString(checked);
         }
         return this;
-    } 
+    }
 
     @SuppressWarnings("unuser")
     public Result getResult() {
