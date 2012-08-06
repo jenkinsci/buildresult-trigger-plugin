@@ -17,8 +17,10 @@ import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
-import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -68,6 +70,11 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     @Override
     protected String getCause() {
         return "A change to build result";
+    }
+
+    @Override
+    public boolean isContextOnStartupFetched() {
+        return true;
     }
 
     @Override
