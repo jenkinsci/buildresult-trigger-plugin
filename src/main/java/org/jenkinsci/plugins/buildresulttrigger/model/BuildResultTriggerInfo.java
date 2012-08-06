@@ -1,20 +1,24 @@
 package org.jenkinsci.plugins.buildresulttrigger.model;
 
+import hudson.Extension;
+import hudson.matrix.MatrixConfiguration;
+import hudson.model.*;
+import hudson.util.ListBoxModel;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
  * @author Gregory Boissinot
  */
-public class BuildResultTriggerInfo {
+public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultTriggerInfo> {
 
-    private String jobName;
+    private final String jobName;
 
-    private CheckedResult[] checkedResults;
+    private final CheckedResult[] checkedResults;
 
     @DataBoundConstructor
-    public BuildResultTriggerInfo(String jobName, CheckedResult[] checkedResult) {
+    public BuildResultTriggerInfo(String jobName, CheckedResult[] checkedResults) {
         this.jobName = jobName;
-        this.checkedResults = checkedResult;
+        this.checkedResults = checkedResults;
     }
 
     @SuppressWarnings("unused")
@@ -26,4 +30,23 @@ public class BuildResultTriggerInfo {
     public CheckedResult[] getCheckedResults() {
         return checkedResults;
     }
+
+    @Extension
+    public static class DescriptorImpl extends Descriptor<BuildResultTriggerInfo> {
+        public String getDisplayName() {
+            return "Job to monitor"; 
+        }
+
+
+        public ListBoxModel doFillJobNameItems() {
+            ListBoxModel model = new ListBoxModel();
+            for (Item item : Hudson.getInstance().getAllItems()) {
+                if ((item instanceof Job) && !(item instanceof MatrixConfiguration)) {
+                    model.add(item.getFullName());
+                }
+            }
+            return model;
+        }
+    }
+
 }

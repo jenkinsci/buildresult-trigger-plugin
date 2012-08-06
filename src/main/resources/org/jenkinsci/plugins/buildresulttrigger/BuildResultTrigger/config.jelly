@@ -3,7 +3,7 @@
 
     <f:entry>
 
-        <f:repeatable var="jobInfo" items="${instance.jobsInfo}" add="${%Add a job to monitor}">
+        <f:repeatable field="jobsInfo" items="${instance.jobsInfo}" add="${%Add a job to monitor}">
 
             <table width="100%">
 
@@ -13,16 +13,12 @@
 
                 <f:block>
                     <f:entry field="jobResults" title="${%Job Build Results to check}">
-                        <f:repeatable var="checkedResult" items="${jobInfo.checkedResults}" add="${%Add a build result}">
+                        <f:repeatable field="checkedResults" add="${%Add a build result}">
 
                             <table width="100%">
 
-                                <f:entry field="buildResult" title="${%Job Build Result}">
-                                    <select class="setting-input" name="checkedResult.result">
-                                        <j:forEach var="result" items="${descriptor.resultList}">
-                                            <f:option selected="${result.toExportedObject()==checkedResult.result.toExportedObject()}">${result.toExportedObject()}</f:option>
-                                        </j:forEach>
-                                    </select>
+                                <f:entry field="result" title="${%Job Build Result}">
+                                    <f:select/>
                                 </f:entry>
 
                                 <f:entry title="">

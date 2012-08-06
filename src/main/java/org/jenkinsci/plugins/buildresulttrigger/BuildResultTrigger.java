@@ -5,7 +5,6 @@ import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
 import hudson.security.ACL;
-import hudson.util.ListBoxModel;
 import hudson.util.SequentialExecutionQueue;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -31,9 +30,9 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     private BuildResultTriggerInfo[] jobsInfo = new BuildResultTriggerInfo[0];
 
     @DataBoundConstructor
-    public BuildResultTrigger(String cronTabSpec, BuildResultTriggerInfo[] jobInfo) throws ANTLRException {
+    public BuildResultTrigger(String cronTabSpec, BuildResultTriggerInfo[] jobsInfo) throws ANTLRException {
         super(cronTabSpec);
-        this.jobsInfo = jobInfo;
+        this.jobsInfo = jobsInfo;
     }
 
     @SuppressWarnings("unused")
@@ -183,28 +182,6 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return queue.getExecutors();
         }
 
-        public List<Result> getResultList() {
-            try {
-                Field allField = Result.class.getDeclaredField("all");
-                allField.setAccessible(true);
-                Result[] results = (Result[]) allField.get(null);
-                return Arrays.asList(results);
-            } catch (NoSuchFieldException nse) {
-                throw new RuntimeException(nse);
-            } catch (IllegalAccessException iae) {
-                throw new RuntimeException(iae);
-            }
-        }
-
-        public ListBoxModel doFillJobNameItems() {
-            ListBoxModel model = new ListBoxModel();
-            for (Item item : Hudson.getInstance().getAllItems()) {
-                if ((item instanceof Job) && !(item instanceof MatrixConfiguration)) {
-                    model.add(item.getFullName());
-                }
-            }
-            return model;
-        }
 
         @Override
         public boolean isApplicable(Item item) {
