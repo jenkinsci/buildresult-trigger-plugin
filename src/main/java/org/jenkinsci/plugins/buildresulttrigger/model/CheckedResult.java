@@ -10,12 +10,22 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
 
-    private Result result;
+    private transient Result result;
+  
+    private final String checked;
 
     @DataBoundConstructor
     public CheckedResult(String result) {
         this.result = Result.fromString(result);
+        this.checked = result;
     }
+
+    public Object readResolve() {
+        if (checked != null) {
+            this.result = Result.fromString(checked);
+        }
+        return this;
+    } 
 
     @SuppressWarnings("unuser")
     public Result getResult() {
