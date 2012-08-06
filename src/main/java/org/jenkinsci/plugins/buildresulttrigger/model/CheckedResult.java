@@ -22,20 +22,14 @@ public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
         this.checked = result;
     }
 
-    public Object readResolve() {
-        if (checked != null) {
-            this.result = Result.fromString(checked);
-        }
-        return this;
-    }
-
-    @SuppressWarnings("unuser")
+    @SuppressWarnings("unused")
     public Result getResult() {
         return result;
     }
 
     @Extension
     public static class DescriptorImpl extends Descriptor<CheckedResult> {
+
         public String getDisplayName() {
             return "Job Build Results to check}";
         }
@@ -49,6 +43,13 @@ public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
             model.add(Result.ABORTED.toString());
             return model;
         }
+    }
 
+    @SuppressWarnings("unused")
+    private Object readResolve() {
+        if (checked != null) {
+            this.result = Result.fromString(checked);
+        }
+        return this;
     }
 }
