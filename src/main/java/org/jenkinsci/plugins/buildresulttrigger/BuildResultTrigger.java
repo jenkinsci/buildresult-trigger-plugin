@@ -88,7 +88,10 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                 if (isValidBuildResultProject(job)) {
                     Run lastBuild = job.getLastBuild();
                     if (lastBuild != null) {
-                        contextResults.put(jobName, lastBuild.getNumber());
+                        int buildNumber = lastBuild.getNumber();
+                        if (buildNumber != 0) {
+                            contextResults.put(jobName, buildNumber);
+                        }
                     }
                 }
             }
@@ -111,69 +114,91 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     @Override
-    protected boolean checkIfModified(BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext1, XTriggerLog log) throws XTriggerException {
-
-        Map<String, Integer> oldContextResults = oldContext.getResults();
+    protected boolean checkIfModified(BuildResultTriggerContext oldContext,
+                                      BuildResultTriggerContext newContext,
+                                      XTriggerLog log)
+            throws XTriggerException {
         SecurityContext securityContext = ACL.impersonate(ACL.SYSTEM);
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
-                String jobName = info.getJobName();
-                AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
-                if (isValidBuildResultProject(job)) {
-
-                    log.info(String.format("Checking changes for job %s.", jobName));
-
-                    //Get last build
-                    Run lastBuild = job.getLastBuild();
-
-                    //Get new job result
-                    Result newResult;
-                    int newBuildNumber = 0;
-                    if (lastBuild == null) {
-                        newResult = Result.NOT_BUILT;
-                    } else {
-                        newResult = lastBuild.getResult();
-                        newBuildNumber = lastBuild.getNumber();
-                    }
-
-
-                    //Get registered job result if exists
-                    Integer lastBuildNumber = oldContextResults.get(jobName);
-                    if (lastBuildNumber == null || lastBuildNumber == 0) {
-                        log.info(String.format("The job %s didn't exist in the previous poll. Checking a build result change in the next poll.", jobName));
-                        return false;
-                    }
-
-                    //Process if there is a new build between now and previous polling
-                    if (newBuildNumber == 0 || newBuildNumber != lastBuildNumber) {
-
-                        log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
-                        CheckedResult[] expectedResults = info.getCheckedResults();
-
-                        if (expectedResults == null || expectedResults.length == 0) {
-                            log.info("No results to check. You have to specify at least one expected build result in the build-result trigger configuration.");
-                            return false;
-                        }
-
-                        for (CheckedResult checkedResult : expectedResults) {
-                            log.info(String.format("Checking %s", checkedResult.getResult().toString()));
-                            if (checkedResult.getResult().ordinal == newResult.ordinal) {
-                                log.info(String.format("Last build result for the job %s matches the expected result %s.", jobName, newResult));
-                                return true;
-                            }
-                        }
-
-                        return false;
-
-                    }
-
-                    log.info(String.format("There is no new build for the job %s.", jobName));
-                    return false;
-
+                boolean atLeastOneModification = checkIfModifiedJob(info, oldContext, newContext, log);
+                if (atLeastOneModification) {
+                    log.info(String.format("Job %s is modified. Triggering a new build.", info.getJobName()));
+                    return true;
                 }
             }
         } finally {
             SecurityContextHolder.setContext(securityContext);
+        }
+
+        return false;
+    }
+
+    private boolean checkIfModifiedJob(BuildResultTriggerInfo configuredTriggerJobInfo,
+                                       BuildResultTriggerContext oldContext,
+                                       BuildResultTriggerContext newContext,
+                                       XTriggerLog log) throws XTriggerException {
+
+        String jobName = configuredTriggerJobInfo.getJobName();
+
+        log.info(String.format("Checking changes for job %s.", jobName));
+
+        final Map<String, Integer> oldContextResults = oldContext.getResults();
+        final Map<String, Integer> newContextResults = newContext.getResults();
+
+        if (newContextResults == null || newContextResults.size() == 0) {
+            log.info(String.format("No new builds to check for the job %s", jobName));
+            return false;
+        }
+
+        if (newContextResults.size() != oldContextResults.size()) {
+            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+        }
+
+        Integer newLastBuildNumber = newContextResults.get(jobName);
+        if (newLastBuildNumber == null || newLastBuildNumber == 0) {
+            log.info(String.format("The job %s doesn't have any new builds.", jobName));
+            return false;
+        }
+
+
+        Integer oldLastBuildNumber = oldContextResults.get(jobName);
+        if (oldLastBuildNumber == null || oldLastBuildNumber == 0) {
+            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+        }
+
+        //Process if there is a new build between now and previous polling
+        if (newLastBuildNumber == 0 || newLastBuildNumber != oldLastBuildNumber) {
+            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+        }
+
+        log.info(String.format("There are no new builds for the job %s.", jobName));
+        return false;
+    }
+
+
+    private boolean isMatchingExpectedResults(BuildResultTriggerInfo configuredTriggerJobInfo, XTriggerLog log) {
+
+        String jobName = configuredTriggerJobInfo.getJobName();
+        CheckedResult[] expectedResults = configuredTriggerJobInfo.getCheckedResults();
+
+        log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
+
+        if (expectedResults == null || expectedResults.length == 0) {
+            log.info("No results to check. You have to specify at least one expected build result in the build-result trigger configuration.");
+            return false;
+        }
+
+        AbstractProject jobObj = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
+        Run jobObjLastBuild = jobObj.getLastBuild();
+        Result jobObjectLastResult = jobObjLastBuild.getResult();
+
+        for (CheckedResult checkedResult : expectedResults) {
+            log.info(String.format("Checking %s", checkedResult.getResult().toString()));
+            if (checkedResult.getResult().ordinal == jobObjectLastResult.ordinal) {
+                log.info(String.format("Last build result for the job %s matches the expected result %s.", jobName, jobObjectLastResult));
+                return true;
+            }
         }
 
         return false;
@@ -188,7 +213,6 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         public ExecutorService getExecutor() {
             return queue.getExecutors();
         }
-
 
         @Override
         public boolean isApplicable(Item item) {
