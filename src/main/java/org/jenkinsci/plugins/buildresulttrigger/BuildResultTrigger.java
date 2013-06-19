@@ -156,19 +156,19 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         Integer newLastBuildNumber = newContextResults.get(jobName);
-        if (newLastBuildNumber == null || newLastBuildNumber == 0) {
+        if (newLastBuildNumber == null || newLastBuildNumber.intValue() == 0) {
             log.info(String.format("The job %s doesn't have any new builds.", jobName));
             return false;
         }
 
 
         Integer oldLastBuildNumber = oldContextResults.get(jobName);
-        if (oldLastBuildNumber == null || oldLastBuildNumber == 0) {
+        if (oldLastBuildNumber == null || oldLastBuildNumber.intValue() == 0) {
             return isMatchingExpectedResults(configuredTriggerJobInfo, log);
         }
 
         //Process if there is a new build between now and previous polling
-        if (newLastBuildNumber == 0 || newLastBuildNumber != oldLastBuildNumber) {
+        if (newLastBuildNumber.intValue() == 0 || newLastBuildNumber.intValue() != oldLastBuildNumber.intValue()) {
             return isMatchingExpectedResults(configuredTriggerJobInfo, log);
         }
 
