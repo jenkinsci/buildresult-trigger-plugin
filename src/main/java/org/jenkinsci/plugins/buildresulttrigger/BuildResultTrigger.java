@@ -1,11 +1,25 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
-import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
-import hudson.model.*;
+import hudson.model.Action;
+import hudson.model.Item;
+import hudson.model.Result;
+import hudson.model.AbstractProject;
+import hudson.model.Hudson;
+import hudson.model.Node;
+import hudson.model.Run;
 import hudson.security.ACL;
 import hudson.util.SequentialExecutionQueue;
+
+import java.io.File;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
@@ -16,13 +30,7 @@ import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import antlr.ANTLRException;
 
 /**
  * @author Gregory Boissinot
@@ -37,11 +45,11 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         this.jobsInfo = jobsInfo;
     }
 
-    @SuppressWarnings("unused")
     public BuildResultTriggerInfo[] getJobsInfo() {
         return jobsInfo;
     }
 
+    @Override
     public File getLogFile() {
         return new File(job.getRootDir(), "buildResultTrigger-polling.log");
     }
@@ -210,6 +218,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor());
 
+        @Override
         public ExecutorService getExecutor() {
             return queue.getExecutors();
         }
