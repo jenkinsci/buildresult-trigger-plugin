@@ -1,5 +1,12 @@
+# maven
 target
+# jenkins
 work
+# IDEA
 *.iml
 *.ipr
 *.iws
+# Eclipse
+.classpath
+.project
+.settings
