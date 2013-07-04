@@ -1,13 +1,34 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
-import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
-import hudson.model.*;
+import hudson.model.Action;
+import hudson.model.Item;
+import hudson.model.Result;
+import hudson.model.AbstractProject;
+import hudson.model.Hudson;
+import hudson.model.Node;
+import hudson.model.Project;
+import hudson.model.Run;
+import hudson.model.listeners.ItemListener;
 import hudson.security.ACL;
 import hudson.util.SequentialExecutionQueue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
+
+import jenkins.model.Jenkins;
+
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
@@ -16,13 +37,7 @@ import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import antlr.ANTLRException;
 
 /**
  * @author Gregory Boissinot
@@ -37,11 +52,11 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         this.jobsInfo = jobsInfo;
     }
 
-    @SuppressWarnings("unused")
     public BuildResultTriggerInfo[] getJobsInfo() {
         return jobsInfo;
     }
 
+    @Override
     public File getLogFile() {
         return new File(job.getRootDir(), "buildResultTrigger-polling.log");
     }
@@ -83,14 +98,15 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         SecurityContext securityContext = ACL.impersonate(ACL.SYSTEM);
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
-                String jobName = info.getJobName();
-                AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
-                if (isValidBuildResultProject(job)) {
-                    Run lastBuild = job.getLastBuild();
-                    if (lastBuild != null) {
-                        int buildNumber = lastBuild.getNumber();
-                        if (buildNumber != 0) {
-                            contextResults.put(jobName, buildNumber);
+                for (String jobName : info.getJobNamesAsArray()) {
+                    AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
+                    if (isValidBuildResultProject(job)) {
+                        Run lastBuild = job.getLastBuild();
+                        if (lastBuild != null) {
+                            int buildNumber = lastBuild.getNumber();
+                            if (buildNumber != 0) {
+                                contextResults.put(jobName, buildNumber);
+                            }
                         }
                     }
                 }
@@ -121,10 +137,13 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         SecurityContext securityContext = ACL.impersonate(ACL.SYSTEM);
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
-                boolean atLeastOneModification = checkIfModifiedJob(info, oldContext, newContext, log);
-                if (atLeastOneModification) {
-                    log.info(String.format("Job %s is modified. Triggering a new build.", info.getJobName()));
-                    return true;
+                CheckedResult[] expectedResults = info.getCheckedResults();
+                for (String jobName : info.getJobNamesAsArray()) {
+                    boolean atLeastOneModification = checkIfModifiedJob(jobName, expectedResults, oldContext, newContext, log);
+                    if (atLeastOneModification) {
+                        log.info(String.format("Job %s is modified. Triggering a new build.", jobName));
+                        return true;
+                    }
                 }
             }
         } finally {
@@ -134,13 +153,8 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return false;
     }
 
-    private boolean checkIfModifiedJob(BuildResultTriggerInfo configuredTriggerJobInfo,
-                                       BuildResultTriggerContext oldContext,
-                                       BuildResultTriggerContext newContext,
-                                       XTriggerLog log) throws XTriggerException {
-
-        String jobName = configuredTriggerJobInfo.getJobName();
-
+    private boolean checkIfModifiedJob(String jobName, CheckedResult[] expectedResults, BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext,
+            XTriggerLog log) {
         log.info(String.format("Checking changes for job %s.", jobName));
 
         final Map<String, Integer> oldContextResults = oldContext.getResults();
@@ -152,7 +166,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         if (newContextResults.size() != oldContextResults.size()) {
-            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log);
         }
 
         Integer newLastBuildNumber = newContextResults.get(jobName);
@@ -164,12 +178,12 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         Integer oldLastBuildNumber = oldContextResults.get(jobName);
         if (oldLastBuildNumber == null || oldLastBuildNumber.intValue() == 0) {
-            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log);
         }
 
         //Process if there is a new build between now and previous polling
         if (newLastBuildNumber.intValue() == 0 || newLastBuildNumber.intValue() != oldLastBuildNumber.intValue()) {
-            return isMatchingExpectedResults(configuredTriggerJobInfo, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log);
         }
 
         log.info(String.format("There are no new builds for the job %s.", jobName));
@@ -177,11 +191,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
 
-    private boolean isMatchingExpectedResults(BuildResultTriggerInfo configuredTriggerJobInfo, XTriggerLog log) {
-
-        String jobName = configuredTriggerJobInfo.getJobName();
-        CheckedResult[] expectedResults = configuredTriggerJobInfo.getCheckedResults();
-
+    private boolean isMatchingExpectedResults(String jobName, CheckedResult[] expectedResults, XTriggerLog log) {
         log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
 
         if (expectedResults == null || expectedResults.length == 0) {
@@ -203,6 +213,14 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         return false;
     }
+    
+    public boolean onJobRenamed(String fullOldName, String fullNewName) {
+        boolean result = true;
+        for (BuildResultTriggerInfo b : jobsInfo) {
+            result &= b.onJobRenamed(fullOldName, fullNewName);
+        }
+        return result;
+    }
 
     @Extension
     @SuppressWarnings("unused")
@@ -210,6 +228,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor());
 
+        @Override
         public ExecutorService getExecutor() {
             return queue.getExecutors();
         }
@@ -227,6 +246,27 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         @Override
         public String getHelpFile() {
             return "/plugin/buildresult-trigger/help.html";
+        }
+    }
+    
+    @Extension
+    public static class ItemListenerImpl extends ItemListener {
+        @Override
+        public void onRenamed(Item item, String oldName, String newName) {
+            String fullNewName = item.getFullName();
+            String fullOldName = StringUtils.removeEnd(fullNewName, newName) + oldName;
+            for( Project<?,?> p : Jenkins.getInstance().getAllItems(Project.class) ) {
+                BuildResultTrigger t = p.getTrigger(BuildResultTrigger.class);
+                if(t!=null) {
+                    if(t.onJobRenamed(fullOldName,fullNewName)) {
+                        try {
+                            p.save();
+                        } catch (IOException e) {
+                            LOGGER.log(Level.WARNING, "Failed to persist project setting during rename from "+oldName+" to "+newName,e);
+                        }
+                    }
+                }
+            }
         }
     }
 }
