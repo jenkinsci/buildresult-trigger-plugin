@@ -10,6 +10,7 @@ import hudson.model.Hudson;
 import hudson.model.Node;
 import hudson.model.Project;
 import hudson.model.Run;
+import hudson.model.listeners.ItemListener;
 import hudson.security.ACL;
 import hudson.util.SequentialExecutionQueue;
 
@@ -213,6 +214,14 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return false;
     }
     
+    public boolean onJobRenamed(String fullOldName, String fullNewName) {
+        boolean result = true;
+        for (BuildResultTriggerInfo b : jobsInfo) {
+            result &= b.onJobRenamed(fullOldName, fullNewName);
+        }
+        return result;
+    }
+
     @Extension
     @SuppressWarnings("unused")
     public static class BuildResultTriggerDescriptor extends XTriggerDescriptor {
@@ -237,6 +246,27 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         @Override
         public String getHelpFile() {
             return "/plugin/buildresult-trigger/help.html";
+        }
+    }
+    
+    @Extension
+    public static class ItemListenerImpl extends ItemListener {
+        @Override
+        public void onRenamed(Item item, String oldName, String newName) {
+            String fullNewName = item.getFullName();
+            String fullOldName = StringUtils.removeEnd(fullNewName, newName) + oldName;
+            for( Project<?,?> p : Jenkins.getInstance().getAllItems(Project.class) ) {
+                BuildResultTrigger t = p.getTrigger(BuildResultTrigger.class);
+                if(t!=null) {
+                    if(t.onJobRenamed(fullOldName,fullNewName)) {
+                        try {
+                            p.save();
+                        } catch (IOException e) {
+                            LOGGER.log(Level.WARNING, "Failed to persist project setting during rename from "+oldName+" to "+newName,e);
+                        }
+                    }
+                }
+            }
         }
     }
 }

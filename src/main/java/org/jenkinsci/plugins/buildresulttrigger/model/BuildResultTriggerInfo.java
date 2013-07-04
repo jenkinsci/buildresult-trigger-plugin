@@ -61,6 +61,38 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
         return checkedResults;
     }
     
+
+    public boolean onJobRenamed(String fullOldName, String fullNewName) {
+        // quick test
+        if(!jobNames.contains(fullOldName)) {
+            return false;
+        }
+
+        boolean changed = false;
+
+        // we need to do this per string, since old Project object is already gone.
+        String[] projects = getJobNamesAsArray();
+        for( int i=0; i<projects.length; i++ ) {
+            if(projects[i].equals(fullOldName)) {
+                projects[i] = fullNewName;
+                changed = true;
+            }
+        }
+
+        if(changed) {
+            StringBuilder b = new StringBuilder();
+            for (String p : projects) {
+                if(b.length() > 0) {
+                    b.append(',');
+                }
+                b.append(p);
+            }
+            jobNames = b.toString();
+        }
+
+        return changed;
+    }
+    
     protected Object readResolve() {
         if (this.jobNames == null) {
             this.jobNames = this.jobName;
