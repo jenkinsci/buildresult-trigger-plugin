@@ -1,6 +1,6 @@
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-    <f:entry field="jobName" title="${%Job to monitor}">
-        <f:select />
+    <f:entry field="jobNames" title="${%Job to monitor}">
+        <f:textbox autoCompleteDelimChar=","/>
     </f:entry>
 
     <f:entry field="jobResults" title="${%Job Build Results to check}">
