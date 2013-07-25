@@ -101,7 +101,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                 for (String jobName : info.getJobNamesAsArray()) {
                     AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
                     if (isValidBuildResultProject(job)) {
-                        Run lastBuild = job.getLastBuild();
+                        Run lastBuild = job.getLastCompletedBuild();
                         if (lastBuild != null) {
                             int buildNumber = lastBuild.getNumber();
                             if (buildNumber != 0) {
@@ -200,7 +200,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         AbstractProject jobObj = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
-        Run jobObjLastBuild = jobObj.getLastBuild();
+        Run jobObjLastBuild = jobObj.getLastCompletedBuild()();
         Result jobObjectLastResult = jobObjLastBuild.getResult();
 
         for (CheckedResult checkedResult : expectedResults) {
