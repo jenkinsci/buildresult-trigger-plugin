@@ -109,6 +109,9 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                             }
                         }
                     }
+                    else {
+                        log.info(String.format("Job %s is not a valid job - ignoring it.", jobName));
+                    }
                 }
             }
         } finally {
