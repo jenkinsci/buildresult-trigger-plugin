@@ -101,7 +101,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                 for (String jobName : info.getJobNamesAsArray()) {
                     AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
                     if (isValidBuildResultProject(job)) {
-                        Run lastBuild = job.getLastBuild();
+                        Run lastBuild = job.getLastCompletedBuild();
                         if (lastBuild != null) {
                             int buildNumber = lastBuild.getNumber();
                             if (buildNumber != 0) {
@@ -166,7 +166,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         if (newContextResults.size() != oldContextResults.size()) {
-            return isMatchingExpectedResults(jobName, expectedResults, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
         }
 
         Integer newLastBuildNumber = newContextResults.get(jobName);
@@ -178,12 +178,12 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         Integer oldLastBuildNumber = oldContextResults.get(jobName);
         if (oldLastBuildNumber == null || oldLastBuildNumber.intValue() == 0) {
-            return isMatchingExpectedResults(jobName, expectedResults, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
         }
 
         //Process if there is a new build between now and previous polling
         if (newLastBuildNumber.intValue() == 0 || newLastBuildNumber.intValue() != oldLastBuildNumber.intValue()) {
-            return isMatchingExpectedResults(jobName, expectedResults, log);
+            return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
         }
 
         log.info(String.format("There are no new builds for the job %s.", jobName));
@@ -191,16 +191,18 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
 
-    private boolean isMatchingExpectedResults(String jobName, CheckedResult[] expectedResults, XTriggerLog log) {
+    private boolean isMatchingExpectedResults(String jobName, CheckedResult[] expectedResults, XTriggerLog log, Integer buildId) {
         log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
 
         if (expectedResults == null || expectedResults.length == 0) {
             log.info("No results to check. You have to specify at least one expected build result in the build-result trigger configuration.");
             return false;
         }
-
+        if (buildId == null) {
+          // no complete build was found so can't trigger here.
+        }
         AbstractProject jobObj = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
-        Run jobObjLastBuild = jobObj.getLastBuild();
+        Run jobObjLastBuild = jobObj.getBuildByNumber(buildId.intValue());
         Result jobObjectLastResult = jobObjLastBuild.getResult();
 
         for (CheckedResult checkedResult : expectedResults) {
