@@ -1,31 +1,13 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
+import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.matrix.MatrixConfiguration;
-import hudson.model.Action;
-import hudson.model.Item;
-import hudson.model.Result;
-import hudson.model.AbstractProject;
-import hudson.model.Hudson;
-import hudson.model.Node;
-import hudson.model.Project;
-import hudson.model.Run;
+import hudson.model.*;
 import hudson.model.listeners.ItemListener;
 import hudson.security.ACL;
 import hudson.util.SequentialExecutionQueue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Level;
-
 import jenkins.model.Jenkins;
-
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
@@ -37,7 +19,15 @@ import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import antlr.ANTLRException;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 /**
  * @author Gregory Boissinot
@@ -58,6 +48,10 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
     @Override
     public File getLogFile() {
+        if (job == null) {
+            return new File("buildResultTrigger-polling.log");
+        }
+
         return new File(job.getRootDir(), "buildResultTrigger-polling.log");
     }
 
@@ -108,8 +102,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                                 contextResults.put(jobName, buildNumber);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         log.info(String.format("Job %s is not a valid job - ignoring it.", jobName));
                     }
                 }
@@ -157,7 +150,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     private boolean checkIfModifiedJob(String jobName, CheckedResult[] expectedResults, BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext,
-            XTriggerLog log) {
+                                       XTriggerLog log) {
         log.info(String.format("Checking changes for job %s.", jobName));
 
         final Map<String, Integer> oldContextResults = oldContext.getResults();
@@ -202,8 +195,10 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return false;
         }
         if (buildId == null) {
-          // no complete build was found so can't trigger here.
+            // no complete build was found so can't trigger here.
+            return false;
         }
+
         AbstractProject jobObj = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
         Run jobObjLastBuild = jobObj.getBuildByNumber(buildId.intValue());
         Result jobObjectLastResult = jobObjLastBuild.getResult();
@@ -218,7 +213,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
         return false;
     }
-    
+
     public boolean onJobRenamed(String fullOldName, String fullNewName) {
         boolean result = true;
         for (BuildResultTriggerInfo b : jobsInfo) {
@@ -253,21 +248,21 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return "/plugin/buildresult-trigger/help.html";
         }
     }
-    
+
     @Extension
     public static class ItemListenerImpl extends ItemListener {
         @Override
         public void onRenamed(Item item, String oldName, String newName) {
             String fullNewName = item.getFullName();
             String fullOldName = StringUtils.removeEnd(fullNewName, newName) + oldName;
-            for( Project<?,?> p : Jenkins.getInstance().getAllItems(Project.class) ) {
+            for (Project<?, ?> p : Jenkins.getInstance().getAllItems(Project.class)) {
                 BuildResultTrigger t = p.getTrigger(BuildResultTrigger.class);
-                if(t!=null) {
-                    if(t.onJobRenamed(fullOldName,fullNewName)) {
+                if (t != null) {
+                    if (t.onJobRenamed(fullOldName, fullNewName)) {
                         try {
                             p.save();
                         } catch (IOException e) {
-                            LOGGER.log(Level.WARNING, "Failed to persist project setting during rename from "+oldName+" to "+newName,e);
+                            LOGGER.log(Level.WARNING, "Failed to persist project setting during rename from " + oldName + " to " + newName, e);
                         }
                     }
                 }

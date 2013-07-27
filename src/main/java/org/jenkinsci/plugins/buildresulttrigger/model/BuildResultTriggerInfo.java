@@ -5,15 +5,13 @@ import hudson.Util;
 import hudson.model.*;
 import hudson.tasks.Messages;
 import hudson.util.FormValidation;
-
-import java.util.StringTokenizer;
-
 import jenkins.model.Jenkins;
-
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
+
+import java.util.StringTokenizer;
 
 /**
  * @author Gregory Boissinot
@@ -21,7 +19,7 @@ import org.kohsuke.stapler.QueryParameter;
 public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultTriggerInfo> {
     @Deprecated
     private transient String jobName;
-    
+
     private String jobNames;
 
     private final CheckedResult[] checkedResults;
@@ -34,23 +32,32 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
 
     /**
      * Please use getJobNames() instead
-     * @deprecated
+     *
      * @return
+     * @deprecated
      */
     @Deprecated
     public String getJobName() {
         return jobName;
     }
-    
+
     public String getJobNames() {
         return jobNames;
     }
-    
+
     public String[] getJobNamesAsArray() {
+
         if (StringUtils.isBlank(jobNames)) {
             return new String[0];
         }
-        String[] projects = StringUtils.split(jobNames, ',');
+
+        final String endJobNames = ", ";
+        String jobNames2proceed = jobNames;
+        if (jobNames2proceed.endsWith(endJobNames)) {
+            jobNames2proceed = jobNames.substring(0, jobNames.length() - endJobNames.length());
+        }
+
+        String[] projects = StringUtils.split(jobNames2proceed, ',');
         for (int i = 0; i < projects.length; i++) {
             projects[i] = projects[i].trim();
         }
@@ -60,11 +67,11 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     public CheckedResult[] getCheckedResults() {
         return checkedResults;
     }
-    
+
 
     public boolean onJobRenamed(String fullOldName, String fullNewName) {
         // quick test
-        if(!jobNames.contains(fullOldName)) {
+        if (!jobNames.contains(fullOldName)) {
             return false;
         }
 
@@ -72,17 +79,17 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
 
         // we need to do this per string, since old Project object is already gone.
         String[] projects = getJobNamesAsArray();
-        for( int i=0; i<projects.length; i++ ) {
-            if(projects[i].equals(fullOldName)) {
+        for (int i = 0; i < projects.length; i++) {
+            if (projects[i].equals(fullOldName)) {
                 projects[i] = fullNewName;
                 changed = true;
             }
         }
 
-        if(changed) {
+        if (changed) {
             StringBuilder b = new StringBuilder();
             for (String p : projects) {
-                if(b.length() > 0) {
+                if (b.length() > 0) {
                     b.append(',');
                 }
                 b.append(p);
@@ -92,7 +99,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
 
         return changed;
     }
-    
+
     protected Object readResolve() {
         if (this.jobNames == null) {
             this.jobNames = this.jobName;
