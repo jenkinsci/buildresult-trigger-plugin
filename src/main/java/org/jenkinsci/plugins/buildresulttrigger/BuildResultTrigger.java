@@ -2,6 +2,8 @@ package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
 import hudson.Extension;
+import hudson.Util;
+import hudson.console.AnnotatedLargeText;
 import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
 import hudson.model.listeners.ItemListener;
@@ -10,6 +12,7 @@ import hudson.util.SequentialExecutionQueue;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.apache.commons.jelly.XMLOutput;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
@@ -21,6 +24,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,9 +61,54 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
     @Override
     public Collection<? extends Action> getProjectActions() {
-        BuildResultTriggerAction action = new BuildResultTriggerAction((AbstractProject) job, getLogFile(), getDescriptor().getDisplayName());
+        BuildResultTriggerAction action = new InternalBuildResultTriggerAction(getDescriptor().getDisplayName());
         return Collections.singleton(action);
     }
+
+    public final class InternalBuildResultTriggerAction extends BuildResultTriggerAction {
+
+        private transient String actionTitle;
+
+        public InternalBuildResultTriggerAction(String actionTitle) {
+            this.actionTitle = actionTitle;
+        }
+
+        @SuppressWarnings("unused")
+        public AbstractProject<?, ?> getOwner() {
+            return (AbstractProject) job;
+        }
+
+        @Override
+        public String getIconFileName() {
+            return "clipboard.gif";
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "BuildResultTrigger Log";
+        }
+
+        @Override
+        public String getUrlName() {
+            return "buildResultTriggerPollLog";
+        }
+
+        @SuppressWarnings("unused")
+        public String getLabel() {
+            return actionTitle;
+        }
+
+        @SuppressWarnings("unused")
+        public String getLog() throws IOException {
+            return Util.loadFile(getLogFile());
+        }
+
+        @SuppressWarnings("unused")
+        public void writeLogTo(XMLOutput out) throws IOException {
+            new AnnotatedLargeText<InternalBuildResultTriggerAction>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
+        }
+    }
+
 
     @Override
     protected boolean requiresWorkspaceForPolling() {
@@ -114,15 +163,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     private boolean isValidBuildResultProject(AbstractProject item) {
-        if (item == null) {
-            return false;
-        }
-
-        if (item instanceof MatrixConfiguration) {
-            return false;
-        }
-
-        return true;
+        return item != null && !(item instanceof MatrixConfiguration);
     }
 
     @Override
@@ -166,19 +207,19 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         Integer newLastBuildNumber = newContextResults.get(jobName);
-        if (newLastBuildNumber == null || newLastBuildNumber.intValue() == 0) {
+        if (newLastBuildNumber == null || newLastBuildNumber == 0) {
             log.info(String.format("The job %s doesn't have any new builds.", jobName));
             return false;
         }
 
 
         Integer oldLastBuildNumber = oldContextResults.get(jobName);
-        if (oldLastBuildNumber == null || oldLastBuildNumber.intValue() == 0) {
+        if (oldLastBuildNumber == null || oldLastBuildNumber == 0) {
             return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
         }
 
         //Process if there is a new build between now and previous polling
-        if (newLastBuildNumber.intValue() == 0 || newLastBuildNumber.intValue() != oldLastBuildNumber.intValue()) {
+        if (newLastBuildNumber.intValue() != oldLastBuildNumber.intValue()) {
             return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
         }
 
