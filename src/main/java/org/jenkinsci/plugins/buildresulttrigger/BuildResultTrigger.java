@@ -136,7 +136,12 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     @Override
-    protected BuildResultTriggerContext getContext(Node node, XTriggerLog log) throws XTriggerException {
+    protected boolean requirePollingNode() {
+        return false;
+    }
+
+    @Override
+    protected BuildResultTriggerContext getContext(XTriggerLog log) throws XTriggerException {
         Map<String, Integer> contextResults = new HashMap<String, Integer>();
         SecurityContext securityContext = ACL.impersonate(ACL.SYSTEM);
         try {
