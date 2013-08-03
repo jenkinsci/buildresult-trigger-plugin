@@ -1,5 +1,11 @@
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
 
+    <f:entry field="combinedJobs">
+           <f:checkbox name="combinedJobs"
+                       checked="${instance.combinedJobs}" default="${false}"/>
+           <label class="attach-previous">${%Combine all job information. A build will be scheduled only all conditions are met.}</label>
+       </f:entry>
+
     <f:entry>
         <f:repeatableProperty field="jobsInfo" add="${%Add a job to monitor}"/>
     </f:entry>

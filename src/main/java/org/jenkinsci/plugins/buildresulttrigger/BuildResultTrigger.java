@@ -38,12 +38,19 @@ import java.util.logging.Level;
  */
 public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResultTriggerContext> {
 
+    private boolean combinedJobs;
+
     private BuildResultTriggerInfo[] jobsInfo = new BuildResultTriggerInfo[0];
 
     @DataBoundConstructor
-    public BuildResultTrigger(String cronTabSpec, BuildResultTriggerInfo[] jobsInfo) throws ANTLRException {
+    public BuildResultTrigger(String cronTabSpec, boolean combinedJobs, BuildResultTriggerInfo[] jobsInfo) throws ANTLRException {
         super(cronTabSpec);
+        this.combinedJobs = combinedJobs;
         this.jobsInfo = jobsInfo;
+    }
+
+    public boolean isCombinedJobs() {
+        return combinedJobs;
     }
 
     public BuildResultTriggerInfo[] getJobsInfo() {
@@ -178,16 +185,43 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             throws XTriggerException {
         SecurityContext securityContext = ACL.impersonate(ACL.SYSTEM);
         try {
+
+            int nbCheckedJobs = 0;
+            int nbModifiedJobs = 0;
             for (BuildResultTriggerInfo info : jobsInfo) {
                 CheckedResult[] expectedResults = info.getCheckedResults();
                 for (String jobName : info.getJobNamesAsArray()) {
-                    boolean atLeastOneModification = checkIfModifiedJob(jobName, expectedResults, oldContext, newContext, log);
-                    if (atLeastOneModification) {
+
+                    nbCheckedJobs++;
+
+                    boolean modifiedJob = checkIfModifiedJob(jobName, expectedResults, oldContext, newContext, log);
+
+                    //Stop at the first modification on the combination mode
+                    if (!combinedJobs && modifiedJob) {
                         log.info(String.format("Job %s is modified. Triggering a new build.", jobName));
                         return true;
                     }
+
+                    //Stop if combined if activated and there isn't a modification
+                    if (combinedJobs && !modifiedJob) {
+                        log.info(String.format("Combination activated. Job %s has not changed. Waiting next poll.", jobName));
+                        resetOldContext(oldContext);
+                        return false;
+                    }
+
+                    if (modifiedJob) {
+                        nbModifiedJobs++;
+                    }
                 }
             }
+
+            if (combinedJobs && nbCheckedJobs == nbModifiedJobs) {
+                log.info("Combination activated and all jobs has changed. Triggering a new build.");
+                return true;
+            } else if (combinedJobs) {
+                resetOldContext(oldContext);
+            }
+
         } finally {
             SecurityContextHolder.setContext(securityContext);
         }
@@ -217,7 +251,6 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return false;
         }
 
-
         Integer oldLastBuildNumber = oldContextResults.get(jobName);
         if (oldLastBuildNumber == null || oldLastBuildNumber == 0) {
             return isMatchingExpectedResults(jobName, expectedResults, log, newContextResults.get(jobName));
@@ -231,7 +264,6 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         log.info(String.format("There are no new builds for the job %s.", jobName));
         return false;
     }
-
 
     private boolean isMatchingExpectedResults(String jobName, CheckedResult[] expectedResults, XTriggerLog log, Integer buildId) {
         log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
