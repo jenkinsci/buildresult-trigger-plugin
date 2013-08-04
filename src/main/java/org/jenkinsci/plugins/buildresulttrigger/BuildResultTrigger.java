@@ -199,12 +199,13 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
                     //Stop at the first modification on the combination mode
                     if (!combinedJobs && modifiedJob) {
                         log.info(String.format("Job %s is modified. Triggering a new build.", jobName));
+                        setNewContext(newContext);
                         return true;
                     }
 
                     //Stop if combined if activated and there isn't a modification
                     if (combinedJobs && !modifiedJob) {
-                        log.info(String.format("Combination activated. Job %s has not changed. Waiting next poll.", jobName));
+                        log.info(String.format("Combination activated. Job %s has not changed. Waiting for next poll.", jobName));
                         resetOldContext(oldContext);
                         return false;
                     }
@@ -217,16 +218,19 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
 
             if (combinedJobs && nbCheckedJobs == nbModifiedJobs) {
                 log.info("Combination activated and all jobs has changed. Triggering a new build.");
+                setNewContext(newContext);
                 return true;
             } else if (combinedJobs) {
                 resetOldContext(oldContext);
+                return false;
+            } else {
+                setNewContext(newContext);
+                return false;
             }
 
         } finally {
             SecurityContextHolder.setContext(securityContext);
         }
-
-        return false;
     }
 
     private boolean checkIfModifiedJob(String jobName, CheckedResult[] expectedResults, BuildResultTriggerContext oldContext, BuildResultTriggerContext newContext,
@@ -266,7 +270,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     private boolean isMatchingExpectedResults(String jobName, CheckedResult[] expectedResults, XTriggerLog log, Integer buildId) {
-        log.info(String.format("There is at least one new build for the job %s. Checking expected job build results.", jobName));
+        log.info(String.format("Checking expected job build results for the job %s.", jobName));
 
         if (expectedResults == null || expectedResults.length == 0) {
             log.info("No results to check. You have to specify at least one expected build result in the build-result trigger configuration.");
