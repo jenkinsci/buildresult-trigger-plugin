@@ -154,7 +154,8 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
                 for (String jobName : info.getJobNamesAsArray()) {
-                    AbstractProject job = Hudson.getInstance().getItemByFullName(jobName, AbstractProject.class);
+                    AbstractProject job = Jenkins.getInstance().getItem(projectName, project, Item.class);
+
                     if (isValidBuildResultProject(job)) {
                         Run lastBuild = job.getLastCompletedBuild();
                         if (lastBuild != null) {
