@@ -28,15 +28,17 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
+import jenkins.model.DependencyDeclarer;
 
 /**
  * @author Gregory Boissinot
  */
-public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResultTriggerContext> {
+public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResultTriggerContext> implements DependencyDeclarer {
 
     private boolean combinedJobs;
 
@@ -70,6 +72,27 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     public Collection<? extends Action> getProjectActions() {
         BuildResultTriggerAction action = new InternalBuildResultTriggerAction(getDescriptor().getDisplayName());
         return Collections.singleton(action);
+    }
+
+    @Override
+    public void buildDependencyGraph(AbstractProject ap, DependencyGraph dg) {
+        if (job instanceof AbstractProject) {
+            for (BuildResultTriggerInfo info : jobsInfo) {
+                for (String jobName : info.getJobNamesAsArray()) {
+                    AbstractProject upstream = Jenkins.getInstance().getItem(jobName, job, AbstractProject.class);
+                    if (upstream != null) {
+                        dg.addDependency(new DependencyGraph.Dependency(upstream, (AbstractProject) job) {
+                            @Override
+                            public boolean shouldTriggerBuild(AbstractBuild build, TaskListener listener, List<Action> actions) {
+                                // Do not let BuildTrigger start the downstream build as a result; let BuildResultTrigger decide.
+                                // If BuildResultTrigger were rewritten to not use polling, this method could actually do the status check instead.
+                                return false;
+                            }
+                        });
+                    }
+                }
+            }
+        }
     }
 
     public final class InternalBuildResultTriggerAction extends BuildResultTriggerAction {
