@@ -1,14 +1,25 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
-import hudson.Extension;
-import hudson.Util;
 import hudson.console.AnnotatedLargeText;
-import hudson.matrix.MatrixConfiguration;
+import hudson.Extension;
 import hudson.model.*;
 import hudson.model.listeners.ItemListener;
 import hudson.security.ACL;
 import hudson.util.SequentialExecutionQueue;
+import hudson.Util;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.HashMap;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.Map;
+import jenkins.model.DependencyDeclarer;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -21,19 +32,6 @@ import org.jenkinsci.lib.xtrigger.XTriggerLog;
 import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import jenkins.model.DependencyDeclarer;
 
 /**
  * @author Gregory Boissinot
@@ -199,7 +197,15 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     private boolean isValidBuildResultProject(AbstractProject item) {
-        return item != null && !(item instanceof MatrixConfiguration);
+        if (null == item) {
+            return false;
+        } else if (Jenkins.getInstance().getPlugin("matrix-plugin").getWrapper().isEnabled()) {
+            try {
+                return !Class.forName("hudson.matrix.MatrixConfiguration").isInstance(item);
+            } catch (ClassNotFoundException e) {
+            }
+        }
+        return true;
     }
 
     @Override
