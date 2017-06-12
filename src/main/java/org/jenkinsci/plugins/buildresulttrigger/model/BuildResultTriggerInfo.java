@@ -11,6 +11,7 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import java.util.Arrays;
 import java.util.StringTokenizer;
 
 /**
@@ -27,13 +28,13 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     @DataBoundConstructor
     public BuildResultTriggerInfo(String jobNames, CheckedResult[] checkedResults) {
         this.jobNames = jobNames;
-        this.checkedResults = checkedResults;
+        this.checkedResults = Arrays.copyOf(checkedResults, checkedResults.length);
     }
 
     /**
      * Please use getJobNames() instead
      *
-     * @return
+     * @return the job name to trigger
      * @deprecated
      */
     @Deprecated
@@ -65,7 +66,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     }
 
     public CheckedResult[] getCheckedResults() {
-        return checkedResults;
+        return Arrays.copyOf(checkedResults, checkedResults.length);
     }
 
 
@@ -129,10 +130,12 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
             while (tokens.hasMoreTokens()) {
                 String projectName = tokens.nextToken().trim();
                 if (StringUtils.isNotBlank(projectName)) {
-                    Item item = Jenkins.getInstance().getItem(projectName, project, Item.class);
+                    Item item = Jenkins.getActiveInstance().getItem(projectName, project, Item.class);
                     if (item == null) {
+                        AbstractProject suggestion = AbstractProject.findNearest(projectName, project.getParent());
+                        assert suggestion != null;
                         return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,
-                                AbstractProject.findNearest(projectName, project.getParent()).getRelativeNameFrom(project)));
+                                   suggestion.getRelativeNameFrom(project)));
                     }
                     if (!(item instanceof AbstractProject)) {
                         return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
