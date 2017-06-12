@@ -1,10 +1,10 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
-import hudson.matrix.MatrixConfiguration;
 import hudson.model.*;
 import hudson.model.listeners.ItemListener;
 import hudson.security.ACL;
@@ -25,11 +25,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -40,15 +36,17 @@ import jenkins.model.DependencyDeclarer;
  */
 public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResultTriggerContext> implements DependencyDeclarer {
 
+    private final static long serialVersionUID = 1L;
+
     private boolean combinedJobs;
 
-    private BuildResultTriggerInfo[] jobsInfo = new BuildResultTriggerInfo[0];
+    private transient BuildResultTriggerInfo[] jobsInfo = new BuildResultTriggerInfo[0];
 
     @DataBoundConstructor
     public BuildResultTrigger(String cronTabSpec, boolean combinedJobs, BuildResultTriggerInfo[] jobsInfo) throws ANTLRException {
         super(cronTabSpec);
         this.combinedJobs = combinedJobs;
-        this.jobsInfo = jobsInfo;
+        this.jobsInfo = Arrays.copyOf(jobsInfo, jobsInfo.length);
     }
 
     public boolean isCombinedJobs() {
@@ -56,7 +54,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     public BuildResultTriggerInfo[] getJobsInfo() {
-        return jobsInfo;
+        return Arrays.copyOf(jobsInfo, jobsInfo.length);
     }
 
     @Override
@@ -74,12 +72,11 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return Collections.singleton(action);
     }
 
-    @Override
     public void buildDependencyGraph(AbstractProject ap, DependencyGraph dg) {
         if (job instanceof AbstractProject) {
             for (BuildResultTriggerInfo info : jobsInfo) {
                 for (String jobName : info.getJobNamesAsArray()) {
-                    AbstractProject upstream = Jenkins.getInstance().getItem(jobName, job, AbstractProject.class);
+                    AbstractProject upstream = Jenkins.getActiveInstance().getItem(jobName, job, AbstractProject.class);
                     if (upstream != null) {
                         dg.addDependency(new DependencyGraph.Dependency(upstream, (AbstractProject) job) {
                             @Override
@@ -108,17 +105,14 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return (AbstractProject) job;
         }
 
-        @Override
         public String getIconFileName() {
             return "clipboard.gif";
         }
 
-        @Override
         public String getDisplayName() {
             return "BuildResultTrigger Log";
         }
 
-        @Override
         public String getUrlName() {
             return "buildResultTriggerPollLog";
         }
@@ -177,7 +171,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
                 for (String jobName : info.getJobNamesAsArray()) {
-                    AbstractProject job = Jenkins.getInstance().getItem(jobName, this.job.getParent(), AbstractProject.class);
+                    Job job = Jenkins.getActiveInstance().getItem(jobName, this.job.getParent(), Job.class);
 
                     if (isValidBuildResultProject(job)) {
                         Run lastBuild = job.getLastCompletedBuild();
@@ -198,8 +192,9 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return new BuildResultTriggerContext(contextResults);
     }
 
-    private boolean isValidBuildResultProject(AbstractProject item) {
-        return item != null && !(item instanceof MatrixConfiguration);
+    private boolean isValidBuildResultProject(Job item) {
+        // TODO: check if could be Matrix Configuration
+        return item != null;
     }
 
     @Override
@@ -305,7 +300,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return false;
         }
 
-        AbstractProject jobObj = Jenkins.getInstance().getItem(jobName, this.job.getParent(), AbstractProject.class);
+        Job jobObj = Jenkins.getActiveInstance().getItem(jobName, this.job.getParent(), Job.class);
         Run jobObjLastBuild = jobObj.getBuildByNumber(buildId.intValue());
         Result jobObjectLastResult = jobObjLastBuild.getResult();
 
@@ -361,7 +356,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         public void onRenamed(Item item, String oldName, String newName) {
             String fullNewName = item.getFullName();
             String fullOldName = StringUtils.removeEnd(fullNewName, newName) + oldName;
-            for (Project<?, ?> p : Jenkins.getInstance().getAllItems(Project.class)) {
+            for (Project<?, ?> p : Jenkins.getActiveInstance().getAllItems(Project.class)) {
                 BuildResultTrigger t = p.getTrigger(BuildResultTrigger.class);
                 if (t != null) {
                     if (t.onJobRenamed(fullOldName, fullNewName)) {

@@ -1,3 +1,6 @@
-<div>
-    This plugin makes it possible to monitor the build results of other jobs.
-</div>
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+    <div>
+        This plugin makes it possible to monitor the build results of other jobs.
+    </div>
+</j:jelly>
