@@ -4,7 +4,8 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.522</version>
+        <version>4.16</version>
+        <relativePath />
     </parent>
 
     <artifactId>buildresult-trigger</artifactId>
@@ -29,10 +30,13 @@
     </developers>
 
     <properties>
+        <jenkins.version>2.204.1</jenkins.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.6</maven.compiler.source>
-        <maven.compiler.target>1.6</maven.compiler.target>
-        <xtrigger.lib.version>0.28</xtrigger.lib.version>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <xtrigger.lib.version>0.34</xtrigger.lib.version>
+        <matrix.project.version>1.12</matrix.project.version>
+        <java.level>8</java.level>
     </properties>
 
     <scm>
@@ -45,6 +49,11 @@
             <groupId>org.jenkins-ci.lib</groupId>
             <artifactId>xtrigger-lib</artifactId>
             <version>${xtrigger.lib.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>matrix-project</artifactId>
+            <version>${matrix.project.version}</version>
         </dependency>
     </dependencies>
 

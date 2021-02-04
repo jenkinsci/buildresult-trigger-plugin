@@ -3,7 +3,6 @@ package org.jenkinsci.plugins.buildresulttrigger.model;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.*;
-import hudson.tasks.Messages;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
