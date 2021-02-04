@@ -133,8 +133,8 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
                         return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,
                                 AbstractProject.findNearest(projectName, project.getParent()).getRelativeNameFrom(project)));
                     }
-                    if (!(item instanceof AbstractProject)) {
-                        return FormValidation.error(Messages.BuildTrigger_NotBuildable(projectName));
+                    if (!(item instanceof Job)) {
+                        return FormValidation.error(Messages.BuildTrigger_NotBuildable(item.getClass().getName()));
                     }
                     hasProjects = true;
                 }
