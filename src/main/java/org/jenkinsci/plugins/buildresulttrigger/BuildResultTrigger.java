@@ -177,7 +177,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
                 for (String jobName : info.getJobNamesAsArray()) {
-                    AbstractProject job = Jenkins.getInstance().getItem(jobName, this.job.getParent(), AbstractProject.class);
+                    Job job = Jenkins.getInstance().getItem(jobName, this.job.getParent(), Job.class);
 
                     if (isValidBuildResultProject(job)) {
                         Run lastBuild = job.getLastCompletedBuild();
@@ -198,7 +198,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         return new BuildResultTriggerContext(contextResults);
     }
 
-    private boolean isValidBuildResultProject(AbstractProject item) {
+    private boolean isValidBuildResultProject(Job item) {
         return item != null && !(item instanceof MatrixConfiguration);
     }
 
@@ -305,7 +305,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return false;
         }
 
-        AbstractProject jobObj = Jenkins.getInstance().getItem(jobName, this.job.getParent(), AbstractProject.class);
+        Job jobObj = Jenkins.getInstance().getItem(jobName, this.job.getParent(), Job.class);
         Run jobObjLastBuild = jobObj.getBuildByNumber(buildId.intValue());
         Result jobObjectLastResult = jobObjLastBuild.getResult();
 
