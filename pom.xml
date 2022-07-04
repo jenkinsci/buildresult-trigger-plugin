@@ -35,7 +35,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <xtrigger.lib.version>0.34</xtrigger.lib.version>
-        <matrix.project.version>1.12</matrix.project.version>
+        <matrix.project.version>772.v494f19991984</matrix.project.version>
         <java.level>8</java.level>
     </properties>
 
