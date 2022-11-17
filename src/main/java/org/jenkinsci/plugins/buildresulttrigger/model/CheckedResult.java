@@ -5,14 +5,22 @@ import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Result;
 import hudson.util.ListBoxModel;
+
+import java.io.Serializable;
+
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
  * @author Gregory Boissinot
  */
-public class CheckedResult extends AbstractDescribableImpl<CheckedResult> {
+public class CheckedResult extends AbstractDescribableImpl<CheckedResult> implements Serializable {
 
-    private transient Result result;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = -1745559604929300826L;
+
+	private transient Result result;
 
     private final String checked;
 

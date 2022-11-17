@@ -1,6 +1,6 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
-import org.jenkinsci.lib.xtrigger.XTriggerContext;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerContext;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.buildresulttrigger;
 
 import antlr.ANTLRException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.Util;
 import hudson.console.AnnotatedLargeText;
@@ -14,17 +15,20 @@ import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.jelly.XMLOutput;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
-import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.AbstractTriggerByFullContext;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerDescriptor;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 import org.jenkinsci.plugins.buildresulttrigger.model.BuildResultTriggerInfo;
 import org.jenkinsci.plugins.buildresulttrigger.model.CheckedResult;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,7 +52,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     public BuildResultTrigger(String cronTabSpec, boolean combinedJobs, BuildResultTriggerInfo[] jobsInfo) throws ANTLRException {
         super(cronTabSpec);
         this.combinedJobs = combinedJobs;
-        this.jobsInfo = jobsInfo;
+        this.jobsInfo = jobsInfo.clone();
     }
 
     public boolean isCombinedJobs() {
@@ -56,7 +60,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
     }
 
     public BuildResultTriggerInfo[] getJobsInfo() {
-        return jobsInfo;
+        return jobsInfo.clone() ;
     }
 
     @Override
@@ -134,6 +138,7 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         }
 
         @SuppressWarnings("unused")
+        @SuppressFBWarnings("RV_RETURN_VALUE_IGNORED")
         public void writeLogTo(XMLOutput out) throws IOException {
             new AnnotatedLargeText<InternalBuildResultTriggerAction>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
         }
@@ -177,7 +182,12 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         try {
             for (BuildResultTriggerInfo info : jobsInfo) {
                 for (String jobName : info.getJobNamesAsArray()) {
-                    Job job = Jenkins.getInstance().getItem(jobName, this.job.getParent(), Job.class);
+                	ItemGroup pjob = null;
+                	
+                    if( this.job != null ) {
+                    	pjob = this.job.getParent() ;
+                    }
+                    Job job = Jenkins.get().getItem(jobName, pjob, Job.class);
 
                     if (isValidBuildResultProject(job)) {
                         Run lastBuild = job.getLastCompletedBuild();
@@ -305,7 +315,13 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
             return false;
         }
 
-        Job jobObj = Jenkins.getInstance().getItem(jobName, this.job.getParent(), Job.class);
+    	ItemGroup pjob = null;
+    	
+        if( this.job != null ) {
+        	pjob = this.job.getParent() ;
+        }
+
+        Job jobObj = Jenkins.get().getItem(jobName, pjob, Job.class);
         Run jobObjLastBuild = jobObj.getBuildByNumber(buildId.intValue());
         Result jobObjectLastResult = jobObjLastBuild.getResult();
 

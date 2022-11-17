@@ -10,13 +10,21 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import com.google.common.base.Optional;
+
+import java.io.Serializable;
 import java.util.StringTokenizer;
 
 /**
  * @author Gregory Boissinot
  */
-public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultTriggerInfo> {
-    @Deprecated
+public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultTriggerInfo> implements Serializable {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 5200528635213141189L;
+
+	@Deprecated
     private transient String jobName;
 
     private String jobNames;
@@ -26,7 +34,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     @DataBoundConstructor
     public BuildResultTriggerInfo(String jobNames, CheckedResult[] checkedResults) {
         this.jobNames = jobNames;
-        this.checkedResults = checkedResults;
+        this.checkedResults = checkedResults.clone();
     }
 
     /**
@@ -64,7 +72,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
     }
 
     public CheckedResult[] getCheckedResults() {
-        return checkedResults;
+        return checkedResults.clone();
     }
 
 
@@ -124,14 +132,18 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
             }
 
             StringTokenizer tokens = new StringTokenizer(Util.fixNull(value), ",");
-            boolean hasProjects = false;
+            boolean hasProjects = false;	
             while (tokens.hasMoreTokens()) {
                 String projectName = tokens.nextToken().trim();
                 if (StringUtils.isNotBlank(projectName)) {
-                    Item item = Jenkins.getInstance().getItem(projectName, project, Item.class);
+                    Item item = Jenkins.get().getItem(projectName, project, Item.class);
                     if (item == null) {
-                        return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,
-                                AbstractProject.findNearest(projectName, project.getParent()).getRelativeNameFrom(project)));
+                    	AbstractProject ap = AbstractProject.findNearest(projectName, project.getParent()) ;
+                    	if( ap != null ) {
+                    		return FormValidation.error(Messages.BuildTrigger_NoSuchProject(projectName,ap.getRelativeNameFrom(project)));
+                    	} else {
+                    		return FormValidation.error(Messages.BuildTrigger_ProjectNotFound(projectName)) ;
+                    	}
                     }
                     if (!(item instanceof Job)) {
                         return FormValidation.error(Messages.BuildTrigger_NotBuildable(item.getClass().getName()));
