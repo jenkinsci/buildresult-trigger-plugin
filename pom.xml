@@ -4,14 +4,14 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.16</version>
+        <version>4.50</version>
         <relativePath />
     </parent>
 
     <artifactId>buildresult-trigger</artifactId>
     <packaging>hpi</packaging>
     <name>Jenkins BuildResultTrigger Plug-in</name>
-    <version>0.18-SNAPSHOT</version>
+    <version>0.19-SNAPSHOT</version>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/BuildResultTrigger+Plugin</url>
 
     <licenses>
@@ -30,19 +30,15 @@
     </developers>
 
     <properties>
-        <jenkins.version>2.263.4</jenkins.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
         <xtrigger.api.version>0.4</xtrigger.api.version>
-        <matrix.project.version>1.12</matrix.project.version>
-        <java.level>8</java.level>
+        <jenkins.version>2.332.4</jenkins.version>
     </properties>
 
     <scm>
-        <connection>scm:git:git://github.com/jenkinsci/buildresult-trigger-plugin.git</connection>
+        <connection>scm:git:https://github.com/jenkinsci/buildresult-trigger-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/buildresult-trigger-plugin.git</developerConnection>
-    </scm>
+      <tag>HEAD</tag>
+  </scm>
 
 	<dependencyManagement>
 		<dependencies>
@@ -65,9 +61,20 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>matrix-project</artifactId>
-            <version>${matrix.project.version}</version>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.jenkins.tools.bom</groupId>
+                <artifactId>bom-2.332.x</artifactId>
+                <version>1706.vc166d5f429f8</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <repositories>
         <repository>
