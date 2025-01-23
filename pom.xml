@@ -11,7 +11,7 @@
     <artifactId>buildresult-trigger</artifactId>
     <packaging>hpi</packaging>
     <name>Jenkins BuildResultTrigger Plug-in</name>
-    <version>0.19-SNAPSHOT</version>
+    <version>1.01-SNAPSHOT</version>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/BuildResultTrigger+Plugin</url>
 
     <licenses>
@@ -30,8 +30,8 @@
     </developers>
 
     <properties>
+        <xtrigger.api.version>0.4</xtrigger.api.version>
         <jenkins.version>2.332.4</jenkins.version>
-        <xtrigger.lib.version>0.34</xtrigger.lib.version>
     </properties>
 
     <scm>
@@ -42,9 +42,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.jenkins-ci.lib</groupId>
-            <artifactId>xtrigger-lib</artifactId>
-            <version>${xtrigger.lib.version}</version>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>xtrigger-api</artifactId>
+            <version>${xtrigger.api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
