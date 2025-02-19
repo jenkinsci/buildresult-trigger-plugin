@@ -11,7 +11,7 @@
     <artifactId>buildresult-trigger</artifactId>
     <packaging>hpi</packaging>
     <name>Jenkins BuildResultTrigger Plug-in</name>
-    <version>1.01</version>
+    <version>1.02-SNAPSHOT</version>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/BuildResultTrigger+Plugin</url>
 
     <licenses>
@@ -38,7 +38,7 @@
     <scm>
         <connection>scm:git:https://github.com/jenkinsci/buildresult-trigger-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/buildresult-trigger-plugin.git</developerConnection>
-      <tag>buildresult-trigger-1.01</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <dependencies>
