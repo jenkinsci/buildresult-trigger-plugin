@@ -23,14 +23,14 @@
 
     <developers>
         <developer>
-            <id>gbois</id>
-            <name>Gregory Boissinot</name>
-            <timezone>+1</timezone>
+            <id>tonynoble</id>
+            <name>Tony Noble</name>
+            <timezone>+0</timezone>
         </developer>
     </developers>
 
     <properties>
-        <xtrigger.api.version>1.1</xtrigger.api.version>
+        <xtrigger.api.version>1.2</xtrigger.api.version>
         <jenkins.baseline>2.479</jenkins.baseline>
 		<jenkins.version>${jenkins.baseline}.1</jenkins.version>
     </properties>
