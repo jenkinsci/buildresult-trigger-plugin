@@ -32,7 +32,7 @@
     <properties>
         <xtrigger.api.version>1.2</xtrigger.api.version>
         <jenkins.baseline>2.479</jenkins.baseline>
-		<jenkins.version>${jenkins.baseline}.1</jenkins.version>
+		<jenkins.version>${jenkins.baseline}.3</jenkins.version>
     </properties>
 
     <scm>
