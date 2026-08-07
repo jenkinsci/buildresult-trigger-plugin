@@ -14,7 +14,6 @@ import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.jelly.XMLOutput;
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.xtriggerapi.AbstractTriggerByFullContext;
 import org.jenkinsci.plugins.xtriggerapi.XTriggerDescriptor;
 import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
@@ -376,7 +375,9 @@ public class BuildResultTrigger extends AbstractTriggerByFullContext<BuildResult
         @Override
         public void onRenamed(Item item, String oldName, String newName) {
             String fullNewName = item.getFullName();
-            String fullOldName = StringUtils.removeEnd(fullNewName, newName) + oldName;
+            String fullOldName = (fullNewName.endsWith(newName)
+                    ? fullNewName.substring(0, fullNewName.length() - newName.length())
+                    : fullNewName) + oldName;
             for (Project<?, ?> p : Jenkins.getInstance().getAllItems(Project.class)) {
                 BuildResultTrigger t = p.getTrigger(BuildResultTrigger.class);
                 if (t != null) {
