@@ -5,7 +5,6 @@ import hudson.Util;
 import hudson.model.*;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
-import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -54,7 +53,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
 
     public String[] getJobNamesAsArray() {
 
-        if (StringUtils.isBlank(jobNames)) {
+        if (Util.fixEmptyAndTrim(jobNames) == null) {
             return new String[0];
         }
 
@@ -64,7 +63,9 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
             jobNames2proceed = jobNames.substring(0, jobNames.length() - endJobNames.length());
         }
 
-        String[] projects = StringUtils.split(jobNames2proceed, ',');
+        String[] projects = java.util.Arrays.stream(jobNames2proceed.split(","))
+                .filter(part -> !part.isEmpty())
+                .toArray(String[]::new);
         for (int i = 0; i < projects.length; i++) {
             projects[i] = projects[i].trim();
         }
@@ -135,7 +136,7 @@ public class BuildResultTriggerInfo extends AbstractDescribableImpl<BuildResultT
             boolean hasProjects = false;	
             while (tokens.hasMoreTokens()) {
                 String projectName = tokens.nextToken().trim();
-                if (StringUtils.isNotBlank(projectName)) {
+                if (Util.fixEmptyAndTrim(projectName) != null) {
                     Item item = Jenkins.get().getItem(projectName, project, Item.class);
                     if (item == null) {
                     	AbstractProject ap = AbstractProject.findNearest(projectName, project.getParent()) ;
